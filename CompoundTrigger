@@ -1,0 +1,66 @@
+create or replace trigger THIS_SCHEMA.COMPOUND_TRIGGER_NAME
+    for insert or update of field_to_watch on THIS_SCHEMA.THIS_TABLE
+compound trigger
+
+/*---------------------------------------------------------------------------------------------*/
+/* DESCRIPTION : Before DML action, add this id to a collection of ids.                        */
+/*               After DML action, update the ids.                                             */
+/*               This is done to avoid a mutating table error.                                 */
+/*               http://docs.oracle.com/cd/B28359_01/appdev.111/b28370/triggers.htm#CIHEFGFD   */
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/* HISTORY     : Initial development by Gabe Tocci on [date]                                   */
+/*---------------------------------------------------------------------------------------------*/
+
+    TYPE t_ids IS TABLE OF this_table.id%TYPE;
+    ids t_ids;
+
+	-- add records we want to evaluate to the collection
+	before each row is
+	begin
+		if :new.field_to_watch in ('GOOD', 'DENIED') then
+        
+            -- initialize collection if null
+			if ids is null then
+				ids := t_ids(); 
+			end if;
+            
+            -- add element
+			ids.extend;
+			ids(ids.count) := :new.this_table.id;
+            
+		end if;
+	end before each row;
+
+	-- process records in the collection
+	after statement is
+	begin
+
+		for i in 1..ids.count loop
+        
+            if :new.field_to_watch = 'GOOD' then 
+
+                UPDATE any_schema.some_table
+                   SET some_table.status_code   = 'G', 
+                       some_table.activity_date = sysdate, 
+                       some_table.user_id       = user
+                 WHERE some_table.id            = ids(i);
+                          
+            elsif :new.field_to_watch = 'DENIED' then 
+
+                UPDATE any_schema.some_table
+                   SET some_table.status_code   = 'D', 
+                       some_table.activity_date = sysdate, 
+                       some_table.user_id       = user
+                 WHERE some_table.id            = ids(i);
+                 
+            end if;
+
+		end loop;
+
+		-- destroy collection
+		ids.delete;
+
+	end after statement;
+
+end COMPOUND_TRIGGER_NAME;
+/
