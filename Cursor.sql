@@ -1,4 +1,4 @@
-/* execute procedure on cursor, and then display values */
+-- Execute procedure on cursor, and then display values
 
 declare
     
