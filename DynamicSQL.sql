@@ -1,4 +1,4 @@
-/* Dynamic SQL to find missing foreign keys */
+-- Dynamic SQL to find missing foreign keys
 
 declare
 
